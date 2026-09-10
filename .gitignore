@@ -1,28 +1,21 @@
-# ---- 运行产物（本地生成，不入库）----
-state.json
-state.meta.json
+# 运行产物（本地生成，不入库）
+state*.json
 shots/
 附件/
+用量/
 logs/
 
-# ---- 个人 / 本地配置 ----
-config.json
-test.yaml
-
-# ---- Python ----
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 
-# ---- 构建产物 ----
+# 构建产物
 dist/
 build/
 *.spec
 
-# ---- 大体积离线分发包（含 Python 安装器与 wheels，约 70MB）----
-离线安装包/
-离线安装包.zip
-
-# ---- 编辑器 / 系统 ----
+# 编辑器 / 系统
 .vscode/
 .idea/
 Thumbs.db

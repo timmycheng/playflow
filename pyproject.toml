@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playflow"
+version = "0.1.0"
+description = "YAML 驱动的 Playwright 自动化引擎：用工作流文件编排浏览器操作"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "playflow" }]
+keywords = ["playwright", "automation", "yaml", "workflow", "browser"]
+dependencies = [
+    "playwright>=1.30",
+    "PyYAML>=5.4",
+]
+
+[project.optional-dependencies]
+http = ["requests>=2.25"]
+dev = ["pyflakes"]
+
+[project.scripts]
+playflow = "playflow.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["playflow*"]

@@ -18,14 +18,13 @@ mock_platform.py —— 本地模拟内网业务平台（外网全流程彩排�
   6. 已提交的任务自动从列表消失；/reset 可重置任务数据；/status 可查看 JSON 状态
 
 账号：admin / 123456
-启动：python mock_platform.py   （Ctrl+C 停止）
+启动：python tests/mock_platform.py   （Ctrl+C 停止）
 """
 import json
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, quote
-from urllib.request import urlopen, Request
 
 HOST, PORT = "127.0.0.1", 8899
 USERS = {"admin": "123456"}          # 模拟 SSO 账号

@@ -1,0 +1,67 @@
+# ============================================================================
+#  demo.yaml —— 本地演练：配合 mock_platform.py 跑通完整流程
+#
+#  终端1：python tests/mock_platform.py      （模拟平台，端口 8899，账号 admin/123456）
+#  终端2：playflow run examples/demo.yaml
+#
+#  演示点：SSO 登录 + 人工验证暂停、iframe 列表、文字容错点击、
+#          条件判断选单选框、附件归档、两种 tasks 循环。
+# ============================================================================
+name: 本地 mock 演练
+
+settings:
+  max_tasks: 1                  # 改成 99 可一次跑完 10 条
+  screenshot: true
+  task_delay_seconds: [0.2, 0.5]
+  attachment_dir: 附件
+
+browser:
+  channel: chrome
+  headless: false
+
+login:
+  url: http://127.0.0.1:8899/login
+  username: admin
+  password: "123456"
+  username_selector: "input[name='username']"
+  password_selector: "input[name='password']"
+  button_text: [登录, 登 录]
+  manual_pause: true            # mock 平台会跳到模拟 UKey 页，点按钮后回终端按回车
+  success_url: http://127.0.0.1:8899/home
+
+env:
+  operator: 自动处理
+
+steps:
+  - uses: log
+    with: { message: "操作人：{{ operator }} / {{ env.operator }}" }
+
+tasks:
+  - name: 类别一
+    url: http://127.0.0.1:8899/list1_page
+    label_regex: '[A-Za-z]{1,6}-?\d{2,}'
+    steps: &task_steps
+      - uses: click_row_link
+      - uses: evaluate
+        with: { js: "() => document.body.innerText", name: body_text }
+      - uses: click_text
+        with: { text: [签收, 受理], optional: true }
+      - uses: pick_radio
+        with: { text: 驳回 }
+        if: "body_text contains 申请"
+      - uses: pick_radio
+        with: { text: 同意 }
+        if: "body_text not contains 申请"
+      - uses: download
+        with: { optional: true }
+      - uses: click_text
+        with: { text: [提交, 确定] }
+      - uses: expect_text
+        with: { text: 提交成功 }
+        continue_on_error: true
+      - uses: close_task_page
+
+  - name: 类别二
+    url: http://127.0.0.1:8899/list2_page   # 列表在 iframe 内，引擎自动遍历
+    label_regex: '[A-Za-z]{1,6}-?\d{2,}'
+    steps: *task_steps

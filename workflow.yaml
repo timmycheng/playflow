@@ -1,97 +1,94 @@
 # ============================================================================
-#  workflow.yaml —— 你的主流程（通用模板，请把「内网…」占位替换为实际地址）
+#  playflow 工作流模板（把「内网…」占位替换成实际地址即可）
 # ----------------------------------------------------------------------------
-#  怎么快速把页面变成步骤？
-#   1. 跑  tool_kit --probe           登录后浏览页面，按回车扫描元素；
-#                                      输入 w=我的页面.yaml 保存选择器 + 步骤草稿
-#   2. 跑  tool_kit --record out.yaml 在浏览器里手动点一遍，自动生成 YAML 步骤
-#   3. 把草稿粘到下面 steps / tasks[].steps 里，--validate 校验后执行
+#  运行：  playflow run workflow.yaml
+#  校验：  playflow validate workflow.yaml
 #
-#  运行：  tool_kit --workflow workflow.yaml      （或菜单选 3）
-#  校验：  tool_kit --workflow workflow.yaml --validate
+#  怎么快速把页面变成步骤？
+#    playflow probe  --workflow workflow.yaml   登录后人工浏览，回车扫描元素；
+#                                                w=文件.yaml 保存选择器与步骤草稿
+#    playflow record out.yaml --workflow workflow.yaml
+#                                               在浏览器里点一遍，自动生成 YAML
 #
 #  设计要点
-#   * 一切皆 step：每个步骤是 {uses, name, with, if, id, continue_on_error}
-#   * uses 决定动作；with 是参数；if 是条件；id 把结果存进变量
+#   * 一切皆 step：{uses, name, with, if, id, continue_on_error}
 #   * 变量用 {{ name }} 引用，支持点路径 {{ row.no }}、{{ steps.xxx }}
 #   * 循环：for_each / while / repeat，循环体写在 do: 下
-#   * tasks 三种模式：first_row（默认，取列表第一行循环）/ once（只跑一次）/
-#     each_row（表格逐行，remove_after: false 时按行号依次处理）
-#
-#  页面复杂怎么办？
-#   * 优先用高层动作（click_text / pick_radio_by_rule / click_row_link / download /
-#     probe），它们自带：中文文字容错空格、遍历所有 iframe、穿透 Shadow DOM、
-#     新标签页兼容
-#   * 某个页面结构特殊时，再叠加低层动作（click / fill / wait_for / switch_page /
-#     extract / evaluate / request），用精确选择器或 frame 指定 iframe
-#
-#  想看彩排示例：workflow.demo.yaml（配合 mock_platform.py）；高级手法：
-#  workflow.advanced.yaml
+#   * 条件：字符串表达式或结构化映射，见 README「条件与函数」一节
+#   * tasks 三种模式：first_row（默认，队列取第一行）/ once（只跑一次）/
+#     each_row（表格逐行；remove_after: false 时按行号依次处理）
 # ============================================================================
 
-name: 我的任务流程
+name: 我的工作流
 
-# ---------- 引擎设置（都可省略；省略时取 config.json 的值，再兜底默认值） ----------
+# ---------- 引擎设置（均可省略） ----------
 settings:
-  max_tasks: 1                  # 每类处理条数；先 1 条试跑
-  screenshot: true              # 关键动作自动截图到 shots/
-  task_delay_seconds: [1, 3]    # 每条任务之间随机等待秒数
+  max_tasks: 1                  # 每个任务处理条数；先 1 条试跑
+  screenshot: true              # 关键动作截图到 shots/
+  task_delay_seconds: [1, 3]    # 每条之间随机等待秒数
+  attachment_dir: 附件           # 附件保存根目录
   # dialog: accept              # 原生弹窗策略：accept（默认）/ dismiss
-  # radio_rules:                # 任务类型 → 单选框（配合 pick_radio_by_rule）
-  #   - { if_type_contains: 报修, then_pick: 同意 }
-  #   - { if_type_contains: 申请, then_pick: 驳回 }
-  # default_radio: 同意
+  # dialog_text: ""             # dialog: prompt 时的输入文本
+  # timeout: 20000              # 元素默认超时（毫秒）
 
-# ---------- 浏览器（省略时用 config.json 的 channel/headless） ----------
+# ---------- 浏览器（省略时 channel=chrome, headless=false） ----------
 browser:
-  channel: chrome
+  channel: chrome               # 驱动系统 Chrome；也可用 msedge
   headless: false
 
-# ---------- 登录（可选；写全了就不需要 config.json） ----------
-# 真实 SSO 与 mock 通用写法：给按钮文字即可，工具自动填账密、点登录、暂停等 UKey。
-# 若登录页元素很怪，可改用 login.steps 自定义（见 workflow.advanced.yaml）。
+# ---------- 登录（可选；不需要登录的流程可整段删除） ----------
+# 登录态复用：成功后写入 state.json，有效期内再次运行不再触碰人工验证环节。
 login:
   url: http://内网SSO地址/login
   username: 工号或账号
-  password: "密码"
+  password: "密码"              # 可用 {{ env.password }} 从 env 引用
   # username_selector: "input[name='username']"   # 可省略，自动找第一个文本框
   # password_selector: "input[name='password']"
   button_text: [登录, 登 录]
-  ukey_wait: true
+  manual_pause: true            # 点登录后暂停等人处理 UKey/短信，回车继续
+  pause_hint: 请在 UKey 窗口完成验证后按回车
   success_url: http://内网平台地址/home
+  # verify_url: ...             # 校验登录成功的地址（默认取 success_url）
+  # state_file: state.json      # 不同流程可各留一份登录态
+  # steps: [...]                # 登录页很特殊时，用自定义步骤替代上面简写
 
-# ---------- 变量（可在步骤里用 {{ 名字 }} 引用） ----------
+# ---------- 变量（步骤里用 {{ 名字 }} 引用） ----------
 env:
   operator: 自动处理
-  # password: ""               # 敏感口令建议放这里，步骤里写 {{ password }}
 
-# ---------- 主流程：登录后、逐个类别之前执行一次 ----------
+# ---------- 主流程：登录后、逐任务之前执行一次 ----------
 steps:
   - name: 打开平台首页
     uses: goto
     with: { url: "http://内网平台地址/home" }
 
-  # 页面结构不熟时打开这两步：控制台会打印元素清单 + 选择器建议，
-  # 去掉注释、执行一次，照着输出改下面的 tasks 步骤即可。
-  # - name: 探测当前页面（结果写 shots/probe_*.yaml，含 suggested_steps 草稿）
-  #   uses: probe
-  #   with: { all_pages: true }
-
-# ---------- 任务类别（按需增删；每个类别是一个列表循环或单页流程） ----------
+# ---------- 任务（按需增删；每个任务是列表循环或单页流程） ----------
 tasks:
-  # ---- 示例一：队列式列表（处理完的行会消失；默认 first_row 模式） ----
+  # ---- 示例一：队列式列表（处理完的行会消失；默认 first_row） ----
   - name: 待办列表
     url: http://内网平台地址/list?type=1
+    label_regex: '[A-Za-z]{1,6}-?\d{2,}'    # 从行文本提取任务号，用作汇总标签
     steps:
       - name: 打开任务（新标签页或同页跳转都兼容）
         uses: click_row_link
+
+      - name: 提取正文，供条件判断
+        uses: evaluate
+        with: { js: "() => document.body.innerText", name: body_text }
 
       - name: 签收任务（找不到就跳过，兼容已签收）
         uses: click_text
         with: { text: [签收, 受理], optional: true }
 
-      - name: 按任务类型勾选处理意见
-        uses: pick_radio_by_rule
+      - name: 按类型勾选处理意见（命中“申请”则驳回）
+        uses: pick_radio
+        with: { text: 驳回 }
+        if: "body_text contains 申请"
+
+      - name: 其余默认同意
+        uses: pick_radio
+        with: { text: 同意 }
+        if: "body_text not contains 申请"
 
       - name: 下载附件
         uses: download

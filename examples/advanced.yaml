@@ -1,0 +1,66 @@
+# ============================================================================
+#  advanced.yaml —— 高级手法示例（条件 / 循环 / 接口 / 断言 / 弹窗策略）
+#  本文件仅用于展示语法，URL 为示例站点，可按需修改后运行。
+#     playflow validate examples/advanced.yaml
+# ============================================================================
+name: 高级示例
+
+settings:
+  screenshot: false
+  dialog: accept                # 原生 confirm 自动确认；dismiss 则取消
+
+browser:
+  headless: false
+
+env:
+  keyword: 登录
+
+steps:
+  # ---- 变量与列表循环 ----
+  - uses: set_var
+    with: { name: total, value: 0 }
+  - uses: for_each
+    with: { over: [A, B, C], as: code }
+    do:
+      - uses: log
+        with: { message: "处理 {{ code }}（第 {{ index }} 项）" }
+      - uses: if
+        with: { condition: "code == 'B'" }
+        then:
+          - uses: set_var
+            with: { name: total, value: 100 }
+        else:
+          - uses: continue     # 跳过后续步骤（仅演示，可删除）
+
+  # ---- while：条件满足即继续；最多 3 轮防死循环 ----
+  - uses: while
+    with: { condition: "total != 100", max: 3 }
+    do:
+      - uses: log
+        with: { message: "第 {{ index }} 轮 total={{ total }}" }
+      - uses: set_var
+        with: { name: total, value: 100 }
+
+  # ---- 接口步骤：requests（需 pip install requests） ----
+  - uses: request
+    with: { url: "https://httpbin.org/get", name: resp }
+  - uses: assert
+    with: { condition: "resp.status == 200", message: "接口应返回 200" }
+
+tasks:
+  # ---- 单页流程：打开页面、等待、取文本、断言 ----
+  - name: 单页检查
+    mode: once
+    steps:
+      - uses: goto
+        with: { url: "https://example.com" }
+      - uses: wait_for
+        with: { selector: "h1" }
+      - uses: extract
+        with: { selector: "h1", name: title }
+      - uses: log
+        with: { message: "页面标题：{{ title }}" }
+      - uses: assert
+        with: { condition: "title contains Example", message: "标题应包含 Example" }
+      - uses: expect_url
+        with: { pattern: "example.com*" }
