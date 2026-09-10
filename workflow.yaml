@@ -1,0 +1,132 @@
+# ============================================================================
+#  workflow.yaml —— 你的主流程（通用模板，请把「内网…」占位替换为实际地址）
+# ----------------------------------------------------------------------------
+#  怎么快速把页面变成步骤？
+#   1. 跑  tool_kit --probe           登录后浏览页面，按回车扫描元素；
+#                                      输入 w=我的页面.yaml 保存选择器 + 步骤草稿
+#   2. 跑  tool_kit --record out.yaml 在浏览器里手动点一遍，自动生成 YAML 步骤
+#   3. 把草稿粘到下面 steps / tasks[].steps 里，--validate 校验后执行
+#
+#  运行：  tool_kit --workflow workflow.yaml      （或菜单选 3）
+#  校验：  tool_kit --workflow workflow.yaml --validate
+#
+#  设计要点
+#   * 一切皆 step：每个步骤是 {uses, name, with, if, id, continue_on_error}
+#   * uses 决定动作；with 是参数；if 是条件；id 把结果存进变量
+#   * 变量用 {{ name }} 引用，支持点路径 {{ row.no }}、{{ steps.xxx }}
+#   * 循环：for_each / while / repeat，循环体写在 do: 下
+#   * tasks 三种模式：first_row（默认，取列表第一行循环）/ once（只跑一次）/
+#     each_row（表格逐行，remove_after: false 时按行号依次处理）
+#
+#  页面复杂怎么办？
+#   * 优先用高层动作（click_text / pick_radio_by_rule / click_row_link / download /
+#     probe），它们自带：中文文字容错空格、遍历所有 iframe、穿透 Shadow DOM、
+#     新标签页兼容
+#   * 某个页面结构特殊时，再叠加低层动作（click / fill / wait_for / switch_page /
+#     extract / evaluate / request），用精确选择器或 frame 指定 iframe
+#
+#  想看彩排示例：workflow.demo.yaml（配合 mock_platform.py）；高级手法：
+#  workflow.advanced.yaml
+# ============================================================================
+
+name: 我的任务流程
+
+# ---------- 引擎设置（都可省略；省略时取 config.json 的值，再兜底默认值） ----------
+settings:
+  max_tasks: 1                  # 每类处理条数；先 1 条试跑
+  screenshot: true              # 关键动作自动截图到 shots/
+  task_delay_seconds: [1, 3]    # 每条任务之间随机等待秒数
+  # dialog: accept              # 原生弹窗策略：accept（默认）/ dismiss
+  # radio_rules:                # 任务类型 → 单选框（配合 pick_radio_by_rule）
+  #   - { if_type_contains: 报修, then_pick: 同意 }
+  #   - { if_type_contains: 申请, then_pick: 驳回 }
+  # default_radio: 同意
+
+# ---------- 浏览器（省略时用 config.json 的 channel/headless） ----------
+browser:
+  channel: chrome
+  headless: false
+
+# ---------- 登录（可选；写全了就不需要 config.json） ----------
+# 真实 SSO 与 mock 通用写法：给按钮文字即可，工具自动填账密、点登录、暂停等 UKey。
+# 若登录页元素很怪，可改用 login.steps 自定义（见 workflow.advanced.yaml）。
+login:
+  url: http://内网SSO地址/login
+  username: 工号或账号
+  password: "密码"
+  # username_selector: "input[name='username']"   # 可省略，自动找第一个文本框
+  # password_selector: "input[name='password']"
+  button_text: [登录, 登 录]
+  ukey_wait: true
+  success_url: http://内网平台地址/home
+
+# ---------- 变量（可在步骤里用 {{ 名字 }} 引用） ----------
+env:
+  operator: 自动处理
+  # password: ""               # 敏感口令建议放这里，步骤里写 {{ password }}
+
+# ---------- 主流程：登录后、逐个类别之前执行一次 ----------
+steps:
+  - name: 打开平台首页
+    uses: goto
+    with: { url: "http://内网平台地址/home" }
+
+  # 页面结构不熟时打开这两步：控制台会打印元素清单 + 选择器建议，
+  # 去掉注释、执行一次，照着输出改下面的 tasks 步骤即可。
+  # - name: 探测当前页面（结果写 shots/probe_*.yaml，含 suggested_steps 草稿）
+  #   uses: probe
+  #   with: { all_pages: true }
+
+# ---------- 任务类别（按需增删；每个类别是一个列表循环或单页流程） ----------
+tasks:
+  # ---- 示例一：队列式列表（处理完的行会消失；默认 first_row 模式） ----
+  - name: 待办列表
+    url: http://内网平台地址/list?type=1
+    steps:
+      - name: 打开任务（新标签页或同页跳转都兼容）
+        uses: click_row_link
+
+      - name: 签收任务（找不到就跳过，兼容已签收）
+        uses: click_text
+        with: { text: [签收, 受理], optional: true }
+
+      - name: 按任务类型勾选处理意见
+        uses: pick_radio_by_rule
+
+      - name: 下载附件
+        uses: download
+        with: { optional: true }
+
+      - name: 提交（原生 confirm 自动确认）
+        uses: click_text
+        with: { text: [提交, 确定] }
+
+      - name: 关闭任务标签页，回到列表
+        uses: close_task_page
+
+  # ---- 示例二：单页流程（无列表，只执行一次） ----
+  # - name: 报表导出
+  #   mode: once
+  #   steps:
+  #     - uses: goto
+  #       with: { url: "http://内网平台地址/report" }
+  #     - uses: select_option
+  #       with: { selector: "#month", label: "本月" }
+  #     - uses: click_text
+  #       with: { text: [导出] }
+  #     - uses: download
+  #       with: { optional: true }
+
+  # ---- 示例三：表格逐行处理（行不会消失时 remove_after: false） ----
+  # - name: 对账表
+  #   mode: each_row
+  #   remove_after: false
+  #   max_tasks: 20
+  #   url: http://内网平台地址/table
+  #   steps:
+  #     - uses: click_row_link
+  #     - uses: extract
+  #       with: { selector: ".amount", name: amount }
+  #     - uses: log
+  #       with: { message: "第 {{ row_index }} 行金额 {{ amount }}" }
+  #     - uses: close_task_page
