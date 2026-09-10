@@ -24,7 +24,7 @@ import json
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs, quote
+from urllib.parse import parse_qs, quote, urlparse
 
 HOST, PORT = "127.0.0.1", 8899
 USERS = {"admin": "123456"}          # 模拟 SSO 账号

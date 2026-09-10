@@ -1,0 +1,25 @@
+name: Publish
+
+# 打 v* tag 自动发布到 PyPI。
+# 前置（一次性，需账号所有者在 PyPI 网页操作）：
+#   pypi.org → Account settings → Publishing → Add a new pending publisher
+#   PyPI project name: playflow
+#   Owner: timmycheng   Repository: cracksars   Workflow filename: publish.yml
+# 之后 git push origin v0.1.0 即自动上传。
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Trusted Publishing 必需
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .[dev]
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1

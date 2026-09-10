@@ -5,8 +5,16 @@ from pathlib import Path
 
 import yaml
 
-from .dom import (BUTTON_SELECTORS, DEFAULT_ROW_SELECTORS, INPUT_TYPES, el_brief,
-                  find_button_all, norm_text, radio_label_text, suggest_selector)
+from .dom import (
+    BUTTON_SELECTORS,
+    DEFAULT_ROW_SELECTORS,
+    INPUT_TYPES,
+    el_brief,
+    find_button_all,
+    norm_text,
+    radio_label_text,
+    suggest_selector,
+)
 from .utils import anchor, base_dir, format_text
 
 

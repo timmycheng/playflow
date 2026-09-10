@@ -4,13 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "playflow"
-version = "0.1.0"
-description = "YAML 驱动的 Playwright 自动化引擎：用工作流文件编排浏览器操作"
+dynamic = ["version"]
+description = "YAML 驱动的 Playwright 自动化引擎：用工作流文件编排浏览器批量任务 (YAML-driven Playwright automation engine for repetitive web tasks)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "playflow" }]
-keywords = ["playwright", "automation", "yaml", "workflow", "browser"]
+authors = [{ name = "timmycheng" }]
+keywords = ["playwright", "automation", "yaml", "workflow", "browser", "rpa"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "playwright>=1.30",
     "PyYAML>=5.4",
@@ -18,10 +34,35 @@ dependencies = [
 
 [project.optional-dependencies]
 http = ["requests>=2.25"]
-dev = ["pyflakes"]
+notify = ["requests>=2.25"]
+xlsx = ["openpyxl>=3.0"]
+dev = ["pytest>=7", "ruff>=0.4", "build>=1.0", "requests>=2.25", "openpyxl>=3.0"]
+
+[project.urls]
+Homepage = "https://github.com/timmycheng/cracksars"
+Repository = "https://github.com/timmycheng/cracksars"
+Changelog = "https://github.com/timmycheng/cracksars/blob/main/CHANGELOG.md"
 
 [project.scripts]
 playflow = "playflow.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["playflow*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "playflow.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# selftest 需先把仓库根目录加进 sys.path 再 import playflow
+"tests/selftest.py" = ["E402"]

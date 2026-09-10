@@ -12,7 +12,9 @@ playflow.browser.pause_for_manual，自动扮演人工去点 mock 平台的
 import builtins
 import json
 import shutil
+import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -75,10 +77,11 @@ pf_actions.pause_for_manual = fake_pause
 
 
 def clean_artifacts():
-    for d in ("shots", "logs", "附件"):
+    for d in ("shots", "logs", "附件", "reports"):
         shutil.rmtree(ROOT / d, ignore_errors=True)
-    (ROOT / "state.json").unlink(missing_ok=True)
-    (ROOT / "state.meta.json").unlink(missing_ok=True)
+    for f in ("state.json", "state.meta.json",
+              "playflow.progress.json", "playflow.failed.json"):
+        (ROOT / f).unlink(missing_ok=True)
     pf_utils.reset_log()
     pf_utils.reset_shots()
 
@@ -318,6 +321,9 @@ def test_error_handling():
     except pf.ConfigError as ex:
         err = str(ex)
     check("未知动作 → 中文 ConfigError", err is not None and "未知步骤" in err, str(err)[:100])
+    check("运行中止时保存 trace.zip",
+          bool(list((ROOT / "shots").glob("trace_中止_*.zip"))),
+          str(list((ROOT / "shots").glob("trace_*.zip"))))
 
     reset_mock()
     bad_url = sample_workflow(1)
@@ -570,35 +576,228 @@ def test_cli_validate(tmpdir=None):
         wf_file.unlink(missing_ok=True)
 
 
+# ================================================================ 新功能用例
+
+def test_checkpoint_resume():
+    print("\n【14】断点续跑：进度文件落盘，--resume 跳过已完成任务")
+    import copy
+    clean_artifacts()
+    reset_mock()
+    global ukey_clicks
+    ukey_clicks = 0
+    base = sample_workflow(1)
+    base["name"] = "断点流程"
+    base["tasks"] = [{"name": "逐行", "mode": "each_row", "remove_after": False,
+                      "url": BASE + "/list1_page",
+                      "label_regex": "[A-Za-z]{1,6}-?\\d{2,}",
+                      "steps": [{"uses": "click_row_link"}, {"uses": "close_task_page"}]}]
+    prog = ROOT / "playflow.progress.json"
+    pf.run_workflow(workflow=copy.deepcopy(base), resume=True)
+    data = json.loads(prog.read_text(encoding="utf-8")) if prog.exists() else {}
+    check("进度文件记录已完成任务", data.get("done", {}).get("逐行") == ["T101"], str(data))
+
+    summary = pf.run_workflow(workflow=copy.deepcopy(base), resume=True)
+    st = summary.get("逐行", {})
+    check("resume 跳过 T101、继续处理 T102",
+          st.get("跳过") == ["T101"] and st.get("成功") == ["T102"], str(st))
+    data2 = json.loads(prog.read_text(encoding="utf-8"))
+    check("进度文件累积到 T102", data2.get("done", {}).get("逐行") == ["T101", "T102"], str(data2))
+
+
+def test_retry_failed():
+    print("\n【15】失败重试：failed.json 落盘，--retry-failed 只补跑失败项")
+    clean_artifacts()
+    reset_mock()
+    global ukey_clicks
+    ukey_clicks = 0
+    wf = sample_workflow(1)
+    wf["tasks"][0]["steps"] = [{"uses": "click", "with": {"selector": "#绝不存在的元素"}}] \
+        + TASK_STEPS
+    pf.run_workflow(workflow=wf)
+    failed_path = ROOT / "playflow.failed.json"
+    failed = json.loads(failed_path.read_text(encoding="utf-8")) if failed_path.exists() else {}
+    check("失败清单记录 T101", failed.get("failed", {}).get("类别一", {}).get("T101"), str(failed))
+
+    reset_mock()
+    wf2 = sample_workflow(1)   # 正常步骤
+    summary = pf.run_workflow(workflow=wf2, retry_failed=True)
+    st = tasks_by_no()
+    check("重试后 T101 提交成功", st.get("T101", {}).get("status") == "submitted")
+    check("不在失败清单里的任务被跳过",
+          st.get("T102", {}).get("status") == "pending"
+          and summary["类别一"]["成功"] == ["T101"], str(summary["类别一"]))
+
+
+def test_dry_run_and_report():
+    print("\n【16】dry-run：写动作全部跳过；运行报告落盘 JSON/HTML")
+    clean_artifacts()
+    reset_mock()
+    global ukey_clicks
+    ukey_clicks = 0
+    summary = pf.run_workflow(workflow=sample_workflow(1), dry_run=True)
+    st = tasks_by_no()
+    check("dry-run 不提交任何任务",
+          all(t["status"] == "pending" for t in st.values()), str(st))
+    check("dry-run 中读动作照常执行（两类各 1 条记为成功）",
+          sum(len(s["成功"]) for s in summary.values()) == 2, str(summary))
+    reports = sorted((ROOT / "reports").glob("run_*.json"))
+    check("运行报告 JSON/HTML 已生成",
+          bool(reports) and list((ROOT / "reports").glob("run_*.html")), str(reports))
+    if reports:
+        data = json.loads(reports[-1].read_text(encoding="utf-8"))
+        check("报告含工作流名与计数", data.get("workflow") == "测试工作流"
+              and data.get("counts", {}).get("成功") == 2, str(data)[:200])
+
+
+def test_data_source_task():
+    print("\n【17】from_csv 数据源任务：每行数据执行一次 steps")
+    clean_artifacts()
+    reset_mock()
+    csv = ROOT / "_data_selftest.csv"
+    out = ROOT / "_data_selftest_out.txt"
+    csv.write_text("单号,城市\nA1,北京\nA2,上海\n", encoding="utf-8")
+    try:
+        wf = {"name": "数据流程",
+              "settings": {"max_tasks": 99, "task_delay_seconds": [0, 0]},
+              "tasks": [{"name": "补录", "from_csv": "_data_selftest.csv",
+                         "label_column": "单号",
+                         "steps": [{"uses": "write_file",
+                                    "with": {"path": "_data_selftest_out.txt",
+                                             "content": "{{ label }}={{ row.城市 }}\n",
+                                             "append": True}}]}]}
+        summary = pf.run_workflow(workflow=wf)
+        check("两行数据各执行一次且变量渲染正确",
+              out.read_text(encoding="utf-8") == "A1=北京\nA2=上海\n",
+              repr(out.read_text(encoding="utf-8") if out.exists() else None))
+        check("数据任务标签取自 label_column 列",
+              summary["补录"]["成功"] == ["A1", "A2"], str(summary.get("补录")))
+    finally:
+        csv.unlink(missing_ok=True)
+        out.unlink(missing_ok=True)
+
+
+def test_include_partials():
+    print("\n【18】partials/include：步骤片段复用")
+    clean_artifacts()
+    out = ROOT / "_incl_selftest.txt"
+    try:
+        wf = {"name": "包含流程",
+              "partials": {"记录": [{"uses": "write_file",
+                                     "with": {"path": "_incl_selftest.txt",
+                                              "content": "包含 {{ env.tag }}\n",
+                                              "append": True}}]},
+              "env": {"tag": "P1"},
+              "steps": [{"include": "记录"}],
+              "tasks": [{"name": "单次", "mode": "once", "steps": [{"include": "记录"}]}]}
+        pf.run_workflow(workflow=wf)
+        check("include 在 steps 与 tasks 中均展开",
+              out.read_text(encoding="utf-8") == "包含 P1\n包含 P1\n",
+              repr(out.read_text(encoding="utf-8") if out.exists() else None))
+    finally:
+        out.unlink(missing_ok=True)
+
+
+def test_heal_findings():
+    print("\n【19】heal：失效文字给出未命中结论")
+    from playflow.heal import run_heal
+    clean_artifacts()
+    reset_mock()
+    global ukey_clicks
+    ukey_clicks = 0
+    wf = sample_workflow(1)
+    wf["tasks"] = []
+    wf["steps"] = [{"uses": "click_text",
+                    "with": {"text": ["绝对不存在按钮XYZqwe"]}}]
+    br = {"channel": "chrome", "headless": True}
+    wf["browser"] = br
+    from playwright.sync_api import sync_playwright
+
+    from playflow.browser import launch, login
+    engine = pf.WorkflowEngine(wf)
+    with sync_playwright() as pw:
+        browser = launch(pw, channel="chrome", headless=True)
+        try:
+            ctx, page = login(engine, browser)
+            engine.ctx, engine.current = ctx, page
+            findings = run_heal(engine, wf)
+        finally:
+            browser.close()
+    check("heal 检出无法定位的步骤",
+          len(findings) == 1 and not findings[0]["ok"]
+          and findings[0]["uses"] == "click_text", str(findings))
+
+
 def main():
     pf.init_stdio()
     print("=" * 62)
     print("playflow 自动验收（目标：mock 平台 %s）" % BASE)
     print("=" * 62)
-    try:
-        http_json("/status")
-    except Exception:
-        print("!! mock 平台未运行，请先执行：python tests/mock_platform.py")
+    proc = None
+    if not _server_up():
+        print("mock 平台未运行，自动拉起 tests/mock_platform.py ……")
+        proc = _start_mock()
+    if proc is None and not _server_up():
+        print("!! mock 平台启动失败，请手动执行：python tests/mock_platform.py")
         sys.exit(2)
-    test_conditions_matrix()
-    test_validate()
-    test_first_run_and_single_task()
-    test_second_run_reuses_state()
-    test_full_batch()
-    test_error_handling()
-    test_conditions_and_loops()
-    test_custom_login_steps()
-    test_probe_action()
-    test_generic_actions()
-    test_record_action()
-    test_state_scoping()
-    test_cli_validate()
+    code = 0
+    try:
+        test_conditions_matrix()
+        test_validate()
+        test_first_run_and_single_task()
+        test_second_run_reuses_state()
+        test_full_batch()
+        test_error_handling()
+        test_conditions_and_loops()
+        test_custom_login_steps()
+        test_probe_action()
+        test_generic_actions()
+        test_record_action()
+        test_state_scoping()
+        test_cli_validate()
+        test_checkpoint_resume()
+        test_retry_failed()
+        test_dry_run_and_report()
+        test_data_source_task()
+        test_include_partials()
+        test_heal_findings()
+    finally:
+        if proc is not None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                proc.kill()
     print("\n" + "=" * 62)
     print("验收结果：通过 %d 项，失败 %d 项" % (len(PASS), len(FAIL)))
     for name, detail in FAIL:
         print("  x %s  %s" % (name, detail))
     print("=" * 62)
-    sys.exit(1 if FAIL else 0)
+    code = 1 if FAIL else 0
+    sys.exit(code)
+
+
+def _server_up() -> bool:
+    try:
+        http_json("/status")
+        return True
+    except Exception:
+        return False
+
+
+def _start_mock():
+    """自动拉起 mock 平台子进程，等待就绪；失败返回 None。"""
+    proc = subprocess.Popen(
+        [sys.executable, str(ROOT / "tests" / "mock_platform.py")],
+        cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    deadline = time.time() + 20
+    while time.time() < deadline:
+        if _server_up():
+            return proc
+        if proc.poll() is not None:
+            return None
+        time.sleep(0.4)
+    proc.terminate()
+    return None
 
 
 if __name__ == "__main__":

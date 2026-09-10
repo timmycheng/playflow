@@ -20,3 +20,14 @@ build/
 .idea/
 Thumbs.db
 Desktop.ini
+
+# playflow 运行产物
+reports/
+*.progress.json
+*.failed.json
+*.healed.yaml
+trace_*.zip
+
+# 测试 / 工具
+.pytest_cache/
+.ruff_cache/

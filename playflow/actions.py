@@ -7,11 +7,13 @@ from pathlib import Path
 
 from .browser import host_of, pause_for_manual, safe_goto, save_state
 from .conditions import eval_condition
-from .dom import (download as dom_download, find_button, input_selector, pick_radio)
+from .dom import download as dom_download
+from .dom import find_button, input_selector, pick_radio
 from .errors import LoopBreak, LoopContinue, StepError
 from .probe import collect_probe, report_probe, write_probe_file
-from .recorder import events_to_steps, install as recorder_install
-from .recorder import stop as recorder_stop, write_record_file
+from .recorder import events_to_steps, write_record_file
+from .recorder import install as recorder_install
+from .recorder import stop as recorder_stop
 from .registry import ACTIONS, action
 from .template import as_bool
 from .utils import anchor, base_dir, format_text, sanitize_filename, shot
@@ -24,13 +26,13 @@ def ensure_registered():
 
 # ---------------------------------------------------------------- 变量 / 基础
 
-@action("log")
+@action("log", mode="read")
 def _a_log(e, p, s):
     e.logf(str(p.get("message", "")), echo=True)
     return None
 
 
-@action("set_var")
+@action("set_var", mode="read")
 def _a_set_var(e, p, s):
     name = p.get("name") or p.get("var")
     if not name:
@@ -40,7 +42,7 @@ def _a_set_var(e, p, s):
     return {str(name): p.get("value")}
 
 
-@action("parse_var")
+@action("parse_var", mode="read")
 def _a_parse_var(e, p, s):
     """用正则从文本抽取变量；from 省略时取 selector 元素文本或 row_text。"""
     text = p.get("from")
@@ -82,7 +84,7 @@ def _a_write_file(e, p, s):
 
 # ---------------------------------------------------------------- 导航
 
-@action("goto")
+@action("goto", mode="read")
 def _a_goto(e, p, s):
     url = p.get("url")
     if not url:
@@ -101,7 +103,7 @@ def _a_goto(e, p, s):
     return resp
 
 
-@action("wait_for_url")
+@action("wait_for_url", mode="read")
 def _a_wait_for_url(e, p, s):
     pattern = p.get("pattern") or p.get("url")
     if not pattern:
@@ -116,7 +118,7 @@ def _a_wait_for_url(e, p, s):
     return e.current.url
 
 
-@action("reload")
+@action("reload", mode="read")
 def _a_reload(e, p, s):
     e.current.reload(wait_until=p.get("wait_until", "domcontentloaded"),
                      timeout=int(p.get("timeout", 25000)))
@@ -124,7 +126,7 @@ def _a_reload(e, p, s):
     return None
 
 
-@action("save_state")
+@action("save_state", mode="read")
 def _a_save_state(e, p, s):
     """把当前登录态持久化，默认沿用本流程的 state 文件。"""
     path = anchor(p.get("path") or e.state_path or "state.json")
@@ -134,7 +136,7 @@ def _a_save_state(e, p, s):
     return str(path)
 
 
-@action("set_dialog")
+@action("set_dialog", mode="read")
 def _a_set_dialog(e, p, s):
     """设置原生弹窗策略：accept（默认）/ dismiss；prompt 可配 text。"""
     mode = str(p.get("mode") or p.get("action") or "").lower()
@@ -149,7 +151,7 @@ def _a_set_dialog(e, p, s):
     return e.settings.get("dialog", "accept")
 
 
-@action("wait")
+@action("wait", mode="read")
 def _a_wait(e, p, s):
     ms = p.get("ms")
     if ms is None:
@@ -158,7 +160,7 @@ def _a_wait(e, p, s):
     return None
 
 
-@action("wait_for")
+@action("wait_for", mode="read")
 def _a_wait_for(e, p, s):
     sel = p.get("selector")
     if not sel:
@@ -329,7 +331,7 @@ def _a_press(e, p, s):
     return None
 
 
-@action("hover")
+@action("hover", mode="read")
 def _a_hover(e, p, s):
     """悬停：selector 精确命中，或用 text 文字匹配。"""
     if p.get("selector"):
@@ -350,7 +352,7 @@ def _a_hover(e, p, s):
     return True
 
 
-@action("scroll")
+@action("scroll", mode="read")
 def _a_scroll(e, p, s):
     """滚动：selector（滚到元素）/ by（像素 [x, y]）/ bottom: true。"""
     if p.get("selector"):
@@ -393,7 +395,7 @@ def _a_upload(e, p, s):
 
 # ---------------------------------------------------------------- 取值 / 请求
 
-@action("extract")
+@action("extract", mode="read")
 def _a_extract(e, p, s):
     """从页面取值存变量。
 
@@ -475,7 +477,7 @@ def _a_extract(e, p, s):
     return {name: val}
 
 
-@action("evaluate")
+@action("evaluate", mode="read")
 def _a_evaluate(e, p, s):
     """执行页面 JS 并把返回值存变量（js/code/script 三选一）。"""
     js = p.get("js") or p.get("code") or p.get("script")
@@ -491,7 +493,7 @@ def _a_evaluate(e, p, s):
     return val
 
 
-@action("request")
+@action("request", mode="read")
 def _a_request(e, p, s):
     """发 HTTP 请求并把结果存变量：status/text/json/headers；output 可保存响应体。"""
     try:
@@ -530,7 +532,7 @@ def _a_request(e, p, s):
 
 # ---------------------------------------------------------------- 下载 / 校验
 
-@action("download")
+@action("download", mode="read")
 def _a_download(e, p, s):
     """下载附件：selector 或 text 二选一，缺省自动寻找“附件/下载”链接。"""
     dest = Path(p["dir"]) if p.get("dir") else Path(e.settings.get("attachment_dir") or "附件")
@@ -553,7 +555,7 @@ def _a_download(e, p, s):
     return got
 
 
-@action("expect_text")
+@action("expect_text", mode="read")
 def _a_expect_text(e, p, s):
     text = str(p.get("text", ""))
     if not e.has_text(text):
@@ -562,7 +564,7 @@ def _a_expect_text(e, p, s):
     return True
 
 
-@action("expect_visible")
+@action("expect_visible", mode="read")
 def _a_expect_visible(e, p, s):
     sel = p.get("selector")
     if not e.selector_visible(sel, p.get("frame")):
@@ -571,7 +573,7 @@ def _a_expect_visible(e, p, s):
     return True
 
 
-@action("expect_url")
+@action("expect_url", mode="read")
 def _a_expect_url(e, p, s):
     pattern = p.get("pattern") or p.get("url")
     if not pattern:
@@ -588,7 +590,7 @@ def _a_expect_url(e, p, s):
     return True
 
 
-@action("assert")
+@action("assert", mode="read")
 def _a_assert(e, p, s):
     cond = p.get("condition", p.get("if"))
     if cond is None:
@@ -598,13 +600,13 @@ def _a_assert(e, p, s):
     return True
 
 
-@action("screenshot")
+@action("screenshot", mode="read")
 def _a_screenshot(e, p, s):
     shot(e.current, str(p.get("name", "手动截图")))
     return None
 
 
-@action("fail")
+@action("fail", mode="read")
 def _a_fail(e, p, s):
     raise StepError(str(p.get("message", "流程主动失败")))
 
@@ -617,7 +619,7 @@ def _a_pause(e, p, s):
 
 # ---------------------------------------------------------------- 页面管理
 
-@action("switch_page")
+@action("switch_page", mode="read")
 def _a_switch_page(e, p, s):
     pages = e.ctx.pages
     if p.get("index") is not None:
@@ -642,7 +644,7 @@ def _a_switch_page(e, p, s):
     return e.current.url
 
 
-@action("close_page")
+@action("close_page", mode="read")
 def _a_close_page(e, p, s):
     which = str(p.get("which") or "current")
     if which == "others":
@@ -664,7 +666,7 @@ def _a_close_page(e, p, s):
     return len(targets)
 
 
-@action("close_task_page")
+@action("close_task_page", mode="read")
 def _a_close_task_page(e, p, s):
     for pg in list(e.opened_pages):
         try:
@@ -680,7 +682,7 @@ def _a_close_task_page(e, p, s):
 
 # ---------------------------------------------------------------- 探测 / 录制
 
-@action("probe")
+@action("probe", mode="read")
 def _a_probe(e, p, s):
     """扫描页面并打印元素清单 + 选择器建议；file 省略=写 shots/probe_*.yaml。"""
     data = collect_probe(e.ctx, max_each=int(p.get("max", 60) or 60),
@@ -700,7 +702,11 @@ def _a_probe(e, p, s):
 
 @action("record")
 def _a_record(e, p, s):
-    """录制人工操作并生成 YAML 步骤（默认写 shots/record_*.yaml）。"""
+    """录制人工操作并生成 YAML 步骤（默认写 shots/record_*.yaml）。
+
+    verify: true 时录制完成后逐步回放验证（会再次真实执行操作，谨慎在生产使用），
+    失败步骤在生成的 YAML 中以注释标出。
+    """
     recorder_install(e.ctx)
     e.logf("操作录制已开始，请在浏览器中操作……", echo=True)
     print()
@@ -715,8 +721,35 @@ def _a_record(e, p, s):
     events = recorder_stop(e.ctx)
     steps, need_password = events_to_steps(events)
     e.logf("录制结束：%d 个事件 → %d 个步骤" % (len(events), len(steps)), echo=True)
+
+    verify_results = None
+    if as_bool(p.get("verify", False)) and steps:
+        print()
+        print(">>> 回放验证将再次真实执行录制的 %d 个步骤（可能重复提交！），" % len(steps))
+        try:
+            ans = input(">>> 仅建议在测试环境使用。确认回放？[y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans in ("y", "yes"):
+            verify_results = []
+            for i, st in enumerate(steps, 1):
+                label = st.get("name") or st.get("uses")
+                try:
+                    e.run_step(dict(st))
+                    verify_results.append((True, ""))
+                    print("  [%d/%d] 通过：%s" % (i, len(steps), label))
+                except Exception as ex:
+                    verify_results.append((False, str(ex).split("\n")[0]))
+                    print("  [%d/%d] 失败：%s（%s）"
+                          % (i, len(steps), label, str(ex).split("\n")[0]))
+            passed = sum(1 for ok, _ in verify_results if ok)
+            e.logf("回放验证：%d/%d 通过" % (passed, len(steps)), echo=True)
+        else:
+            e.logf("已跳过回放验证。", echo=True)
+
     path = write_record_file(steps, e.wf, p.get("file") or None,
-                             need_password=need_password)
+                             need_password=need_password,
+                             verify_results=verify_results)
     print()
     print("—— 录制生成的步骤（可直接粘贴到工作流的 steps 下）——")
     import yaml
@@ -728,7 +761,7 @@ def _a_record(e, p, s):
 
 # ---------------------------------------------------------------- 控制流
 
-@action("if")
+@action("if", mode="read")
 def _a_if(e, p, s):
     cond = p.get("condition")
     if cond is None:
@@ -758,7 +791,7 @@ def _iter_over(e, p):
     return []
 
 
-@action("for_each")
+@action("for_each", mode="read")
 def _a_for_each(e, p, s):
     items = _iter_over(e, p)
     body = s.get("do") or s.get("steps") or []
@@ -786,7 +819,7 @@ def _a_for_each(e, p, s):
     return len(items)
 
 
-@action("repeat")
+@action("repeat", mode="read")
 def _a_repeat(e, p, s):
     times = int(p.get("times", 1))
     body = s.get("do") or s.get("steps") or []
@@ -801,7 +834,7 @@ def _a_repeat(e, p, s):
     return times
 
 
-@action("while")
+@action("while", mode="read")
 def _a_while(e, p, s):
     cond = p.get("condition")
     body = s.get("do") or s.get("steps") or []
@@ -828,17 +861,17 @@ def _a_while(e, p, s):
     return i
 
 
-@action("break")
+@action("break", mode="read")
 def _a_break(e, p, s):
     raise LoopBreak()
 
 
-@action("continue")
+@action("continue", mode="read")
 def _a_continue(e, p, s):
     raise LoopContinue()
 
 
-@action("run_steps")
+@action("run_steps", mode="read")
 def _a_run_steps(e, p, s):
     """内联执行子步骤。"""
     e.run_steps(s.get("do") or s.get("steps") or [])

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """运行期基础设施：日志、截图、路径解析、人工暂停。"""
 import datetime
+import logging
 import re
 import sys
 import threading
+import time
 from pathlib import Path
 
 _BASE_DIR = Path.cwd()
@@ -13,14 +15,55 @@ _LOG_FILE = None
 _LOG_LOCK = None
 _SHOT_N = 0
 
+# 库形态：所有控制台输出走 "playflow" logger；未配置时自动挂默认 handler。
+logger = logging.getLogger("playflow")
+logger.addHandler(logging.NullHandler())
+_CONSOLE_HANDLER = None
+
+
+class _MsFormatter(logging.Formatter):
+    """控制台格式与旧版 print 保持一致：[HH:MM:SS.mmm] 消息。"""
+
+    def formatTime(self, record, datefmt=None):
+        return time.strftime("%H:%M:%S", time.localtime(record.created)) \
+            + ".%03d" % int(record.msecs)
+
+
+def ensure_console_logging():
+    """给 "playflow" logger 挂默认控制台 handler（幂等）。
+
+    用户已自行配置 handler 时不再附加，输出完全交给用户的 logging 配置。
+    """
+    global _CONSOLE_HANDLER
+    if _CONSOLE_HANDLER is not None:
+        return
+    for h in logger.handlers:
+        if not isinstance(h, logging.NullHandler) and not getattr(h, "_playflow_default", False):
+            return
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(_MsFormatter("[%(asctime)s] %(message)s"))
+    handler._playflow_default = True
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    _CONSOLE_HANDLER = handler
+
+
+def disable_console_logging():
+    """移除默认控制台 handler；用户自己配置 logging 或需要静默时使用。"""
+    global _CONSOLE_HANDLER
+    if _CONSOLE_HANDLER is not None:
+        logger.removeHandler(_CONSOLE_HANDLER)
+        _CONSOLE_HANDLER = None
+
 
 def init_stdio():
-    """Windows 控制台兜底：打印异常字符不崩溃。"""
+    """Windows 控制台兜底：打印异常字符不崩溃；并确保控制台输出可用。"""
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(errors="replace")
         except Exception:
             pass
+    ensure_console_logging()
 
 
 def set_base_dir(path):
@@ -56,7 +99,7 @@ def reset_log():
 
 
 def log(msg, echo=False):
-    """写 UTF-8 日志；echo=True 时同步打印到控制台。"""
+    """写 UTF-8 日志；echo=True 时同步输出到控制台（经 "playflow" logger）。"""
     global _LOG_LOCK
     if _LOG_LOCK is None:
         _LOG_LOCK = threading.Lock()
@@ -69,9 +112,10 @@ def log(msg, echo=False):
         pass
     if echo:
         try:
-            print(line, flush=True)
+            # 时间戳由 handler 的 formatter 统一加，避免与文件行前缀重复
+            logger.info("%s", msg)
         except Exception:
-            print(line.encode("gbk", "replace").decode("gbk"), flush=True)
+            pass
 
 
 def shot(page, stage, echo=False):

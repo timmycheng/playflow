@@ -296,8 +296,13 @@ def events_to_steps(events):
     return deduped, need_password
 
 
-def write_record_file(steps, workflow=None, path=None, need_password=False) -> Path:
-    """把录制出的步骤写成可直接运行的工作流 YAML。"""
+def write_record_file(steps, workflow=None, path=None, need_password=False,
+                      verify_results=None) -> Path:
+    """把录制出的步骤写成可直接运行的工作流 YAML。
+
+    verify_results 与 steps 等长（或 None）：每项 (True, "") / (False, 失败原因)，
+    失败步骤上方会生成 “# ⚠ 回放验证失败” 注释。
+    """
     if path is None:
         d = base_dir() / "shots"
         d.mkdir(parents=True, exist_ok=True)
@@ -317,11 +322,28 @@ def write_record_file(steps, workflow=None, path=None, need_password=False) -> P
         env["password"] = ""
     if env:
         doc["env"] = env
-    doc["steps"] = steps
     header = ("# playflow 操作录制生成（%s）\n"
               "# 请核对 URL、账号与选择器后使用。\n"
               % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    path.write_text(header + yaml.safe_dump(
-        doc, allow_unicode=True, sort_keys=False, default_flow_style=False),
-        encoding="utf-8")
+
+    if not verify_results:
+        doc["steps"] = steps
+        path.write_text(header + yaml.safe_dump(
+            doc, allow_unicode=True, sort_keys=False, default_flow_style=False),
+            encoding="utf-8")
+        return path
+
+    # 带验证结果：逐个步骤手写缩进，以便在失败步骤上方插注释
+    doc.pop("steps", None)
+    chunks = [header + yaml.safe_dump(
+        doc, allow_unicode=True, sort_keys=False, default_flow_style=False).rstrip("\n"),
+        "steps:" if steps else "steps: []"]
+    for i, st in enumerate(steps):
+        if i < len(verify_results) and verify_results[i] and not verify_results[i][0]:
+            chunks.append("  # ⚠ 回放验证失败：%s" % (verify_results[i][1] or "未知原因"))
+        step_yaml = yaml.safe_dump([st], allow_unicode=True, sort_keys=False,
+                                   default_flow_style=False).rstrip("\n")
+        chunks.append("\n".join("  " + ln if ln.strip() else ln
+                                for ln in step_yaml.split("\n")))
+    path.write_text("\n".join(chunks) + "\n", encoding="utf-8")
     return path

@@ -7,10 +7,10 @@ import traceback
 from pathlib import Path
 from urllib.parse import urlparse
 
+from .dom import find_button, norm_text
 from .errors import AbortError, ConfigError
 from .template import render
 from .utils import anchor, dump_scene, log, pause_for_manual, shot
-from .dom import find_button, norm_text
 
 DEFAULT_TIMEOUT = 20000
 _ACTIVE_CONTEXT = None   # 最近一次登录建立的上下文，供测试/外部集成观察
@@ -349,7 +349,7 @@ def perform_login(engine, page, login_cfg=None):
         if login_cfg.get("wait_after_login_ms"):
             page.wait_for_timeout(int(login_cfg["wait_after_login_ms"]))
     else:
-        print("login 未配置 username/password，请在浏览器中手动输入账密并登录。")
+        log("login 未配置 username/password，请在浏览器中手动输入账密并登录。", echo=True)
 
     engine.snap("登录后待验证")
     if login_cfg.get("manual_pause", True):
