@@ -36,6 +36,7 @@ dependencies = [
 http = ["requests>=2.25"]
 notify = ["requests>=2.25"]
 xlsx = ["openpyxl>=3.0"]
+docs = ["mkdocs-material>=9"]
 dev = ["pytest>=7", "ruff>=0.4", "build>=1.0", "requests>=2.25", "openpyxl>=3.0"]
 
 [project.urls]
@@ -48,6 +49,9 @@ playflow = "playflow.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["playflow*"]
+
+[tool.setuptools.package-data]
+playflow = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = { attr = "playflow.__version__" }

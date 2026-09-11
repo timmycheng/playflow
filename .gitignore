@@ -31,3 +31,6 @@ trace_*.zip
 # 测试 / 工具
 .pytest_cache/
 .ruff_cache/
+
+# mkdocs 构建输出
+site/

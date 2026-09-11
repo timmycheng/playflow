@@ -1,0 +1,24 @@
+name: ✨ 功能建议
+description: 提出新动作、新能力或改进建议
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+      description: 你在自动化什么平台/流程时遇到了什么困难？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的用法
+      description: 理想中的 YAML 写法或命令行用法（可以是伪代码）
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 目前的替代方案
+      description: 现在用哪些动作/写法能凑合实现？差在哪里？

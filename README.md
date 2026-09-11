@@ -1,5 +1,12 @@
 # playflow
 
+[![CI](https://github.com/timmycheng/playflow/actions/workflows/ci.yml/badge.svg)](https://github.com/timmycheng/playflow/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/playflow)](https://pypi.org/project/playflow/)
+[![Python](https://img.shields.io/pypi/pyversions/playflow)](https://pypi.org/project/playflow/)
+[![License](https://img.shields.io/pypi/l/playflow)](https://github.com/timmycheng/playflow/blob/main/LICENSE)
+
+**简体中文** | [English](README.en.md)
+
 YAML 驱动的 Playwright 自动化引擎。把浏览器操作写成工作流文件：
 
 ```yaml

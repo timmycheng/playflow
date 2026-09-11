@@ -1,0 +1,46 @@
+site_name: playflow
+site_description: YAML 驱动的 Playwright 自动化引擎
+site_url: https://timmycheng.github.io/playflow/
+repo_url: https://github.com/timmycheng/playflow
+repo_name: timmycheng/playflow
+edit_uri: blob/main/docs/
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+nav:
+  - 首页: index.md
+  - 安装: installation.md
+  - 快速开始: quickstart.md
+  - 工作流: workflow.md
+  - 动作参考: actions.md
+  - 命令行: cli.md
+  - Python API: api.md
+  - 社区: community.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true

@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """变量模板：{{ name }} / {{ a.b.0 }}，整串是单个模板时保留原始类型。"""
+from __future__ import annotations
+
 import re
+from typing import Any
 
 VAR_RE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
 
 
-def dig(value, path):
+def dig(value: Any, path: str) -> Any:
     """按点路径取值：a.b.0.c；路径不存在返回 None。"""
     for part in str(path).split("."):
         if isinstance(value, dict):
@@ -22,7 +25,7 @@ def dig(value, path):
     return value
 
 
-def render(value, variables):
+def render(value: Any, variables: dict[str, Any]) -> Any:
     """递归渲染 dict/list/str 中的 {{ }}；整个字符串就是一个模板时返回原始值。"""
     if isinstance(value, dict):
         return {k: render(v, variables) for k, v in value.items()}
@@ -34,14 +37,14 @@ def render(value, variables):
     if m:
         return dig(variables, m.group(1).strip())
 
-    def _sub(mm):
+    def _sub(mm: re.Match) -> str:
         val = dig(variables, mm.group(1).strip())
         return "" if val is None else str(val)
 
     return VAR_RE.sub(_sub, value)
 
 
-def as_bool(value):
+def as_bool(value: Any) -> bool:
     """字符串/数字转布尔；"false"/"0"/"no"/"" 视为 False。"""
     if isinstance(value, bool):
         return value

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """工作流引擎：加载 YAML、渲染变量、执行步骤与任务循环。"""
+from __future__ import annotations
+
 import copy
 import datetime
 import json
@@ -412,7 +414,7 @@ def _load_partial_steps(pdef, name, base=None):
     return steps
 
 
-def expand_partials(workflow, base=None):
+def expand_partials(workflow: dict, base: str | Path | None = None) -> dict:
     """把工作流中所有 include 步骤展开为 partials 内容（深拷贝，支持嵌套）。"""
     wf = workflow if isinstance(workflow, dict) else {}
     partials = wf.get("partials") or {}
@@ -746,7 +748,7 @@ def run_task(engine, task):
 
 # ---------------------------------------------------------------- 运行入口
 
-def load_workflow(path):
+def load_workflow(path: str | Path) -> dict:
     p = Path(path)
     if not p.exists():
         raise ConfigError("未找到工作流文件：%s" % p)
@@ -782,9 +784,11 @@ def _save_trace(ctx, engine, tag):
         engine.logf("保存 trace 失败：%s" % ex)
 
 
-def run_workflow(path=None, workflow=None, base_dir=None, headless=None,
-                 channel=None, headed=False, logf=log,
-                 dry_run=False, resume=False, retry_failed=False):
+def run_workflow(path: str | Path | None = None, workflow: dict | None = None,
+                 base_dir: str | Path | None = None, headless: bool | None = None,
+                 channel: str | None = None, headed: bool = False, logf=log,
+                 dry_run: bool = False, resume: bool = False,
+                 retry_failed: bool = False) -> dict:
     """执行工作流并返回汇总。
 
     path          工作流文件路径（workflow 参数优先）
@@ -953,7 +957,7 @@ PARAM_HINTS = {
 }
 
 
-def validate_workflow(source, base=None):
+def validate_workflow(source: object, base: str | Path | None = None) -> tuple[list[str], list[str]]:
     """校验工作流（dict 或文件路径），返回 (errors, warnings)。"""
     wf = source if isinstance(source, dict) else load_workflow(source)
     if base is None and not isinstance(source, dict) and source:

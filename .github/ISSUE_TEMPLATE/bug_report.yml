@@ -1,0 +1,44 @@
+name: 🐞 Bug 报告
+description: 报告 playflow 的问题
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ 提交前请注意：**不要粘贴真实密码、API Token 或 `state.json` 内容**，
+        工作流示例请替换成假账号与脱敏 URL。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么？
+      description: 描述期望行为与实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤 / 最小工作流
+      description: 请提供能复现的最小 YAML 与操作步骤（脱敏后）
+      render: yaml
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: playflow 版本
+      description: playflow --version 的输出
+      placeholder: playflow 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: 浏览器渠道
+      options: [chrome, msedge]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志 / 截图
+      description: logs/run_*.log 的关键片段（脱敏）或 shots/ 截图说明

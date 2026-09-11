@@ -2,6 +2,15 @@
 
 格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- 社区化物料：CONTRIBUTING / 行为准则 / 安全策略 / Issue 与 PR 模板 / Dependabot
+- 双语文档：README.en.md（英文版）与徽章
+- 文档站：mkdocs-material + GitHub Actions 自动部署（docs/ 目录）
+- `py.typed` 类型标注声明与公共模块类型标注
+
 ## [0.1.0] - 2026-09-11
 
 首个 PyPI 发布。核心是 YAML 驱动的 Playwright 工作流引擎，面向内网老平台的批量任务自动化。

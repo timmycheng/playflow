@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题 / Questions
+    url: https://github.com/timmycheng/playflow/discussions
+    about: 使用方法、写工作流的疑问请到 Discussions 提问
+  - name: 📖 文档
+    url: https://github.com/timmycheng/playflow#readme
+    about: 大多数问题在 README 的动作参考与章节里已有答案

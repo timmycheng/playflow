@@ -7,6 +7,8 @@
   3. 条件函数：exists / visible / absent / has_text / count / text / attr / value /
      page_count / url / title
 """
+from __future__ import annotations
+
 import re
 
 from .errors import ConfigError
@@ -86,7 +88,7 @@ def _strip_outer(text):
     return s
 
 
-def eval_condition(cond, engine):
+def eval_condition(cond: object, engine: object) -> bool:
     """对条件求值；cond 为 None 时视为 True。"""
     if cond is None:
         return True

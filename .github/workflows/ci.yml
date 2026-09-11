@@ -60,3 +60,13 @@ jobs:
       - run: pip install -e .[dev]
       # selftest 会自动拉起 mock 平台并驱动系统 Chrome（runner 预装 Google Chrome）
       - run: python tests/selftest.py
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install mkdocs-material
+      - run: mkdocs build --strict
