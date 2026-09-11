@@ -1,0 +1,9 @@
+# llms.txt
+
+> playflow: YAML-driven Playwright automation engine for repetitive browser tasks on dated intranet platforms. Write workflow YAML (steps, conditions, loops, variables), run via CLI or Python.
+
+- Docs: https://timmycheng.cn/playflow/
+- AI usage guide (how agents should drive playflow): https://timmycheng.cn/playflow/ai/
+- PyPI: https://pypi.org/project/playflow/
+- Install: pip install playflow
+- Validate before running: playflow validate wf.yaml && playflow run wf.yaml --dry-run

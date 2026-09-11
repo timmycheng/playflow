@@ -34,6 +34,7 @@ nav:
   - 动作参考: actions.md
   - 命令行: cli.md
   - Python API: api.md
+  - AI 使用指南: ai.md
   - 社区: community.md
 
 markdown_extensions:

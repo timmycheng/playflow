@@ -6,6 +6,7 @@
 
 ### 新增
 
+- AI 使用指南与 AI 辅助开发声明（`docs/ai.md`：面向 AI 代理的库使用规范 + 开发过程使用的 harness 与模型披露）
 - 社区化物料：CONTRIBUTING / 行为准则 / 安全策略 / Issue 与 PR 模板 / Dependabot
 - 双语文档：README.en.md（英文版）与徽章
 - 文档站：mkdocs-material + GitHub Actions 自动部署（docs/ 目录）

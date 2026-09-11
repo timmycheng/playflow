@@ -464,6 +464,14 @@ pip install --no-index --find-links=wheels playflow            # 内网机
 
 引擎通过 `channel` 驱动系统 Chrome，无需 `playwright install` 下载浏览器。
 
+## AI 使用与声明
+
+- 🤖 **给 AI 的使用指南**：如果你是 AI 代理/编码助手，请先阅读 [AI 使用指南](docs/ai.md)——
+  安装调用、YAML 书写规则、动作速查、校验与 dry-run 流程一页速览。
+- 📝 **AI 辅助开发声明**：本项目由 [@timmycheng](https://github.com/timmycheng) 提供需求与验收，
+  代码/测试/文档/CI 由 **ZCode**（CLI 编码代理）+ **GLM**（Z.ai 训练）辅助生成，
+  以 pytest/selftest/ruff 与 CI 自动验收为合并门槛。详见 [docs/ai.md](docs/ai.md)。
+
 ## 开发与测试
 
 ```bash
