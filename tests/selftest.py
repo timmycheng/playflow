@@ -363,6 +363,7 @@ def test_conditions_and_loops():
 
     wf2 = {
         "login": sample_workflow()["login"],
+        "browser": {"channel": "chrome", "headless": True},
         "steps": [
             {"uses": "goto", "with": {"url": BASE + "/list2_page"}},
             {"uses": "assert", "with": {"condition": "exists(iframe)", "message": "iframe 应存在"}},
@@ -659,6 +660,7 @@ def test_data_source_task():
     try:
         wf = {"name": "数据流程",
               "settings": {"max_tasks": 99, "task_delay_seconds": [0, 0]},
+              "browser": {"channel": "chrome", "headless": True},
               "tasks": [{"name": "补录", "from_csv": "_data_selftest.csv",
                          "label_column": "单号",
                          "steps": [{"uses": "write_file",
@@ -682,6 +684,7 @@ def test_include_partials():
     out = ROOT / "_incl_selftest.txt"
     try:
         wf = {"name": "包含流程",
+              "browser": {"channel": "chrome", "headless": True},
               "partials": {"记录": [{"uses": "write_file",
                                      "with": {"path": "_incl_selftest.txt",
                                               "content": "包含 {{ env.tag }}\n",
