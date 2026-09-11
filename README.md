@@ -113,6 +113,7 @@ login:                             # 可选；不需要登录的流程整段删�
   pause_hint: 请在 UKey 窗口完成验证
   success_url: http://平台/home     # 登录成功校验地址（也用于登录态归属判断）
   verify_url: ""                   # 校验地址（默认取 success_url）
+  # reuse_settle_ms: 3000          # 复用登录态时，到 success_url 后的观察窗口（毫秒）
   state_file: state.json           # 登录态文件，多流程可各用一份
   steps: []                        # 登录页很特殊时，用自定义步骤替代以上简写
 
@@ -282,12 +283,16 @@ if:
 
 ## 登录态与人工暂停
 
-1. 启动先看 `state.json`（或 `login.state_file`）：能验证通过就跳过登录与人工验证。
+1. 启动先看 `state.json`（或 `login.state_file`）：文件存在不等于直接跳过——先打开
+   `success_url`，等掉 JS/延时跳转再判断，确认没有登录/验证特征才复用；cookie 已过期则直接重登。
 2. 失效或站点不符则走 `login` 简写：自动填账密、点登录；
    `manual_pause: true` 时暂停等人处理 UKey/短信，回车后回 `success_url` 校验。
 3. 校验通过把登录态写回 `state.json`（并写 `.meta.json` 记录站点，防止跨流程误用）。
 4. 批量运行中途被踢回登录页：自动重新登录后继续当前任务。
 5. 想换账号重登：删除 `state.json` 与 `state.json.meta.json`。
+
+`login.reuse_settle_ms`（默认 3000）控制复用登录态时在 `success_url` 上的观察窗口，
+慢平台/后台轮询多导致跳转更晚时可调大。
 
 ## 断点续跑与失败重试
 

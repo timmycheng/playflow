@@ -182,11 +182,21 @@ def save_state(ctx, state_path, meta=None):
         log("保存登录态元数据失败：%s" % e)
 
 
+def _cookie_expired(cookie) -> bool:
+    """cookie 是否已过期；expires 缺失/<=0 视为会话 cookie（未过期）。"""
+    try:
+        exp = float(cookie.get("expires", -1))
+    except (TypeError, ValueError):
+        return False
+    return exp > 0 and exp <= time.time()
+
+
 def state_reusable(state_path, target_url) -> tuple:
     """判断 state 文件能否用于 target_url，返回 (可用?, 原因)。
 
-    ① 元数据站点不一致 → 不可用；② 文件里没有目标站点 cookie/localStorage → 不可用；
-    读不出文件内容时退回“可用”，交给后续页面级校验。
+    ① 元数据站点不一致 → 不可用；② 文件里没有目标站点 cookie/localStorage，
+    或目标站点的 cookie 全部已过期 → 不可用；读不出文件内容时退回“可用”，
+    交给后续页面级校验。
     """
     p = Path(state_path)
     if not p.exists():
@@ -208,14 +218,21 @@ def state_reusable(state_path, target_url) -> tuple:
                 return False, "state 文件属于 %s，与当前流程 %s 不是同一站点" % (origin, host)
     except Exception:
         pass
+    expired = False
     for c in (data.get("cookies") or []):
         d = str(c.get("domain") or "").lstrip(".").lower()
-        if d and (host == d or host.endswith("." + d)):
+        if not d or not (host == d or host.endswith("." + d)):
+            continue
+        if _cookie_expired(c):
+            expired = True
+        else:
             return True, ""
     for o in (data.get("origins") or []):
         oh = host_of(o.get("origin") or "")
         if oh and (host == oh or host.endswith("." + oh) or oh.endswith("." + host)):
             return True, ""
+    if expired:
+        return False, "state 文件里 %s 的登录 cookie 已过期" % host
     return False, "state 文件里没有 %s 的登录态（可能来自其它流程或站点）" % host
 
 
@@ -239,6 +256,24 @@ def _needs_verification(page, login_cfg) -> bool:
         except Exception:
             pass
     return False
+
+
+def wait_login_markers(page, login_cfg, timeout=3000, interval=250) -> bool:
+    """在 timeout 内轮询页面是否出现登录/二次验证特征。
+
+    SPA 常先渲染页面外壳、随后才（可能延时）跳回登录页，goto 返回时还看不出
+    登录页；留一个观察窗口再下结论，避免把失效会话误判为有效登录态。
+    """
+    deadline = time.time() + max(0, timeout) / 1000.0
+    while True:
+        if is_login_page(page) or _needs_verification(page, login_cfg):
+            return True
+        if time.time() >= deadline:
+            return False
+        try:
+            page.wait_for_timeout(interval)
+        except Exception:
+            return False
 
 
 # ---------------------------------------------------------------- 登录
@@ -272,6 +307,8 @@ def login(engine, browser):
         return ctx, page
 
     if reusable and verify_url:
+        settle_ms = int(login_cfg.get("reuse_settle_ms", 3000) or 0)
+        engine.logf("访问 %s 校验登录态…" % verify_url, echo=True)
         try:
             page.goto(verify_url, wait_until="domcontentloaded", timeout=25000)
             try:
@@ -281,7 +318,7 @@ def login(engine, browser):
         except Exception as ex:
             engine.logf("复用登录态失败：%s" % ex)
         else:
-            if not is_login_page(page) and not _needs_verification(page, login_cfg):
+            if not wait_login_markers(page, login_cfg, timeout=settle_ms):
                 engine.logf("检测到有效登录态（复用 %s），跳过登录。" % state_path.name, echo=True)
                 return ctx, page
             engine.logf("%s 已失效，需要重新登录。" % state_path.name, echo=True)

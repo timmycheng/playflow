@@ -28,7 +28,7 @@ from .errors import AbortError, ConfigError, LoopBreak, LoopContinue, PlayFlowEr
 from .registry import ACTIONS, action, action_mode
 from .utils import base_dir, disable_console_logging, ensure_console_logging, init_stdio, logger, set_base_dir
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "AbortError", "ConfigError", "LoopBreak", "LoopContinue", "PlayFlowError", "StepError",

@@ -254,7 +254,7 @@ if:
 
 ## Login state & manual pause
 
-1. On start, playflow checks `state.json` (or `login.state_file`); if the stored session validates, login and manual verification are skipped.
+1. On start, playflow checks `state.json` (or `login.state_file`); a file alone never means "skip": it opens `success_url`, waits out client-side/late redirects to login, and only skips when no login/verification markers appear. Expired cookies are treated as invalid up front.
 2. If invalid or from a different site, it runs the `login` shortcut: fills credentials, clicks login; with `manual_pause: true` it pauses for UKey/SMS, resumes with Enter and validates via `success_url`.
 3. On success the session is written back to `state.json` (plus a `.meta.json` site record to prevent cross-workflow misuse).
 4. If kicked back to a login page mid-run, it re-logs-in automatically and continues the current task.

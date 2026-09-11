@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-11
+
 ### 新增
 
 - AI 使用指南与 AI 辅助开发声明（`docs/ai.md`：面向 AI 代理的库使用规范 + 开发过程使用的 harness 与模型披露）
@@ -11,6 +13,12 @@
 - 双语文档：README.en.md（英文版）与徽章
 - 文档站：mkdocs-material + GitHub Actions 自动部署（docs/ 目录）
 - `py.typed` 类型标注声明与公共模块类型标注
+
+### 修复
+
+- 登录态复用误判：`success_url` 校验不再只等页面 `load` 就下结论，新增观察窗口
+  （`login.reuse_settle_ms`，默认 3000ms），SPA/延时 JS 跳回登录页也会被识别并重新登录。
+- `state_reusable` 现在会检查目标站点 cookie 是否已过期，全部过期时不再复用登录态。
 
 ## [0.1.0] - 2026-09-11
 
