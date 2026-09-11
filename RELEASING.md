@@ -6,7 +6,7 @@
 
 1. 登录 pypi.org → Account settings → Publishing → **Add a new pending publisher**：
    - PyPI project name: `playflow`
-   - Owner: `timmycheng`，Repository: `cracksars`，Workflow filename: `publish.yml`
+   - Owner: `timmycheng`，Repository: `playflow`，Workflow filename: `publish.yml`
 2. 之后每次发布只需：
 
 ```bash

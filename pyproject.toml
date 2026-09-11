@@ -39,9 +39,9 @@ xlsx = ["openpyxl>=3.0"]
 dev = ["pytest>=7", "ruff>=0.4", "build>=1.0", "requests>=2.25", "openpyxl>=3.0"]
 
 [project.urls]
-Homepage = "https://github.com/timmycheng/cracksars"
-Repository = "https://github.com/timmycheng/cracksars"
-Changelog = "https://github.com/timmycheng/cracksars/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/timmycheng/playflow"
+Repository = "https://github.com/timmycheng/playflow"
+Changelog = "https://github.com/timmycheng/playflow/blob/main/CHANGELOG.md"
 
 [project.scripts]
 playflow = "playflow.cli:main"

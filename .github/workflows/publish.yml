@@ -4,7 +4,7 @@ name: Publish
 # 前置（一次性，需账号所有者在 PyPI 网页操作）：
 #   pypi.org → Account settings → Publishing → Add a new pending publisher
 #   PyPI project name: playflow
-#   Owner: timmycheng   Repository: cracksars   Workflow filename: publish.yml
+#   Owner: timmycheng   Repository: playflow   Workflow filename: publish.yml
 # 之后 git push origin v0.1.0 即自动上传。
 on:
   push:
