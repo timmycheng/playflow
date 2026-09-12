@@ -64,6 +64,11 @@ _RECORDER_JS = r"""
       selector: cssPath(el)
     };
     if (b.tag === 'a' || b.tag === 'button' || get('role') === 'button') b.text = txt(el);
+    if (b.itype === 'radio' || b.itype === 'checkbox') {
+      let lb = el.closest ? el.closest('label') : null;
+      if (!lb && el.id) lb = document.querySelector('label[for="' + esc(el.id) + '"]');
+      if (lb) { b.label = txt(lb); b.text = txt(lb); }
+    }
     if (b.tag === 'a') { b.href = get('href'); b.target = get('target'); }
     if ('value' in el && typeof el.value === 'string') b.value = el.value;
     return b;

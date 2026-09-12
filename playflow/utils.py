@@ -19,6 +19,7 @@ _SHOT_N = 0
 logger = logging.getLogger("playflow")
 logger.addHandler(logging.NullHandler())
 _CONSOLE_HANDLER = None
+_CONSOLE_DISABLED = False
 
 
 class _MsFormatter(logging.Formatter):
@@ -35,7 +36,7 @@ def ensure_console_logging():
     用户已自行配置 handler 时不再附加，输出完全交给用户的 logging 配置。
     """
     global _CONSOLE_HANDLER
-    if _CONSOLE_HANDLER is not None:
+    if _CONSOLE_DISABLED or _CONSOLE_HANDLER is not None:
         return
     for h in logger.handlers:
         if not isinstance(h, logging.NullHandler) and not getattr(h, "_playflow_default", False):
@@ -50,7 +51,8 @@ def ensure_console_logging():
 
 def disable_console_logging():
     """移除默认控制台 handler；用户自己配置 logging 或需要静默时使用。"""
-    global _CONSOLE_HANDLER
+    global _CONSOLE_HANDLER, _CONSOLE_DISABLED
+    _CONSOLE_DISABLED = True
     if _CONSOLE_HANDLER is not None:
         logger.removeHandler(_CONSOLE_HANDLER)
         _CONSOLE_HANDLER = None

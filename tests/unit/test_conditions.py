@@ -3,6 +3,7 @@
 import pytest
 
 from playflow.conditions import eval_condition
+from playflow.errors import ConfigError
 
 
 class FakeEngine:
@@ -64,6 +65,24 @@ class FakeEngine:
 ])
 def test_condition_matrix(cond, expected):
     assert eval_condition(cond, FakeEngine()) is expected
+
+
+@pytest.mark.parametrize("cond,expected", [
+    ("n==3", True), ("n>=3", True), ("n<2", False), ("n!=4", True),
+    ("count(a[href])>=1", True), ("exists(#no)||exists(#ok)", True),
+    ("exists(#ok)&&n==3", True), ("s not in ['驳回']", True),
+    ("st.status==200", True), ("n>2 and (n<4 or n==9)", True),
+])
+def test_compact_operators_without_spaces(cond, expected):
+    assert eval_condition(cond, FakeEngine()) is expected
+
+
+@pytest.mark.parametrize("cond", [
+    "n = 3", "n ! 3", "n ==", "has_tex(#ok)", "has_tex(#ok) == true",
+])
+def test_malformed_condition_raises(cond):
+    with pytest.raises(ConfigError):
+        eval_condition(cond, FakeEngine())
 
 
 def test_structured_conditions():

@@ -289,7 +289,7 @@ if:
    `manual_pause: true` 时暂停等人处理 UKey/短信，回车后回 `success_url` 校验。
 3. 校验通过把登录态写回 `state.json`（并写 `.meta.json` 记录站点，防止跨流程误用）。
 4. 批量运行中途被踢回登录页：自动重新登录后继续当前任务。
-5. 想换账号重登：删除 `state.json` 与 `state.json.meta.json`。
+5. 想换账号重登：删除 `state.json` 与 `state.meta.json`。
 
 `login.reuse_settle_ms`（默认 3000）控制复用登录态时在 `success_url` 上的观察窗口，
 慢平台/后台轮询多导致跳转更晚时可调大。
@@ -441,7 +441,7 @@ handler 后 playflow 不会再附加。文件日志（`logs/`）不受影响。
 
 | 产物 | 说明 |
 |---|---|
-| `state.json` + `state.json.meta.json` | 登录态及其站点记录 |
+| `state.json` + `state.meta.json` | 登录态及其站点记录 |
 | `<流程名>.progress.json` / `<流程名>.failed.json` | 断点续跑进度 / 失败清单（`--resume` / `--retry-failed` 用） |
 | `logs/run_日期.log` | 全程日志：动作、任务号、结果、异常堆栈 |
 | `shots/序号_阶段_时间戳.png` | 关键动作截图（`settings.screenshot: false` 可关） |
@@ -481,7 +481,7 @@ pip install --no-index --find-links=wheels playflow            # 内网机
 
 ```bash
 pip install -e .[dev]
-pytest                        # 单元测试 60+ 项，无需浏览器
+pytest                        # 单元测试 99 项，无需浏览器
 python tests/selftest.py      # 端到端验收 60+ 项：自动拉起 mock 平台，需本机 Chrome
 ruff check .                  # 代码检查
 ```

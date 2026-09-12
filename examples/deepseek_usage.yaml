@@ -1,0 +1,101 @@
+# ============================================================================
+#  deepseek_usage.yaml —— 真实站点示例：登录 DeepSeek 开放平台，抓取
+#  当月用量 / 累计消费 / 余额并落盘 JSON。
+#
+#  需要真实账号（短信验证码登录，首次运行在浏览器里完成；登录态存到
+#  state.deepseek.json，之后复用不再需要验证码）：
+#
+#    playflow run examples/deepseek_usage.yaml
+#
+#  提示：站点改版后步骤可能失效，可用
+#        playflow probe --workflow examples/deepseek_usage.yaml 重新取选择器。
+# ============================================================================
+name: DeepSeek 平台用量查询
+
+settings:
+  screenshot: true
+  timeout: 30000
+  trace: on_error
+
+browser:
+  channel: chrome
+  headless: false
+
+env:
+  account: "你的手机号或邮箱"     # 也可从外部注入，避免把账号写进文件
+  output_dir: 用量
+
+login:
+  success_url: https://platform.deepseek.com/usage
+  state_file: state.deepseek.json
+  reuse_settle_ms: 5000          # 页面为 SPA，复用登录态时多等一会儿再判断
+  steps:
+    - uses: goto
+      with: { url: "https://platform.deepseek.com/sign_in" }
+    - uses: fill
+      with:
+        selector: "input[type='email'], input[type='tel'], input[placeholder*='邮箱'], input[placeholder*='手机'], input[placeholder*='Email' i]"
+        text: "{{ env.account }}"
+    - uses: click_text
+      with: { text: [发送验证码, 获取验证码, 继续], optional: true }
+    - uses: pause
+      with: { message: "请在浏览器里输入短信验证码并点击登录，完成后回车继续" }
+
+tasks:
+  - name: 用量查询
+    mode: once
+    steps:
+      - uses: goto
+        with: { url: "https://platform.deepseek.com/usage" }
+      - uses: wait_for
+        with: { selector: "text=用量", timeout: 30000 }
+      - uses: evaluate
+        with: { js: "() => document.body.innerText", name: usage_text }
+      - uses: parse_var
+        with:
+          from: "{{ usage_text }}"
+          regex: '充值余额[\s\S]{0,200}?¥([\d,]+\.?\d*)'
+          name: balance
+          default: ""
+      - uses: parse_var
+        with:
+          from: "{{ usage_text }}"
+          regex: '累计消费金额\s*¥([\d,]+\.?\d*)'
+          name: total_cost
+          default: ""
+      - uses: parse_var
+        with:
+          from: "{{ usage_text }}"
+          regex: '消费金额\s*¥([\d,]+\.?\d*)'
+          name: month_cost
+          default: ""
+      - uses: parse_var
+        with:
+          from: "{{ usage_text }}"
+          regex: 'API 请求次数[\s,]*([\d,]+)'
+          name: requests
+          default: ""
+      - uses: parse_var
+        with:
+          from: "{{ usage_text }}"
+          regex: 'Tokens\s*([\d,]+)'
+          name: tokens
+          default: ""
+      - uses: evaluate
+        with:
+          js: "() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }"
+          name: month_key
+      - uses: write_file
+        with:
+          path: "{{ env.output_dir }}/deepseek_用量_{{ month_key }}.json"
+          content:
+            source: https://platform.deepseek.com/usage
+            month: "{{ month_key }}"
+            balance_cny: "{{ balance }}"
+            total_cost_cny: "{{ total_cost }}"
+            month_cost_cny: "{{ month_cost }}"
+            api_requests: "{{ requests }}"
+            tokens: "{{ tokens }}"
+      - uses: log
+        with:
+          message: "DeepSeek {{ month_key }}：余额 ¥{{ balance }} · 累计消费 ¥{{ total_cost }} · 近 30 天 ¥{{ month_cost }} · 请求 {{ requests }} 次"

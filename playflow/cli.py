@@ -82,13 +82,24 @@ def _abs(path):
     return p if p.is_absolute() else Path.cwd() / p
 
 
+def _summary_exit_code(summary):
+    """任务失败/任务级错误 → 退出码 1，便于脚本与 CI 感知结果。"""
+    failed = sum(len(st.get("失败") or []) for st in (summary or {}).values())
+    errored = sum(1 for st in (summary or {}).values() if st.get("错误"))
+    if failed or errored:
+        print("\n运行结束：失败 %d 个任务，%d 个任务出错（退出码 1）。" % (failed, errored))
+        return 1
+    return 0
+
+
 def cmd_run(args):
     if args.validate:
         return cmd_validate(args)
     headless = True if args.headless else (False if args.headed else None)
-    run_workflow(path=args.file, headless=headless, channel=args.channel, headed=args.headed,
-                 dry_run=args.dry_run, resume=args.resume, retry_failed=args.retry_failed)
-    return 0
+    summary = run_workflow(path=args.file, headless=headless, channel=args.channel,
+                           headed=args.headed, dry_run=args.dry_run, resume=args.resume,
+                           retry_failed=args.retry_failed)
+    return _summary_exit_code(summary)
 
 
 def cmd_validate(args):

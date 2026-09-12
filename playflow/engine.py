@@ -20,7 +20,7 @@ from .dom import find_row, norm_text
 from .errors import AbortError, ConfigError, LoopBreak, LoopContinue, StepError
 from .registry import ACTIONS, action_mode
 from .template import as_bool, render
-from .utils import anchor, base_dir, log, set_base_dir, shot
+from .utils import anchor, base_dir, ensure_console_logging, log, set_base_dir, shot
 from .utils import base_dir as get_base_dir  # run_workflow 参数会遮蔽同名函数
 
 _ensure_actions()   # 导入即注册全部内置动作
@@ -689,7 +689,11 @@ def run_task(engine, task):
     if mode == "once":
         engine.row = None
         engine.vars.update({"label": "", "task_no": "", "row_text": "", "row_index": 0})
-        _run_one_task(engine, steps, name, stat, category=name)
+        if engine.should_skip(name, name):
+            stat["跳过"].append(name)
+            engine.logf("任务 %s：跳过 %s（%s）" % (name, name, engine._skip_reason), echo=True)
+        else:
+            _run_one_task(engine, steps, name, stat, category=name)
         _finish_task_log(engine, name, stat)
         engine.list_page = None
         return
@@ -763,12 +767,12 @@ def load_workflow(path: str | Path) -> dict:
 
 
 def _normalize_trace_mode(value):
-    s = str(value if value is not None else "on_error").lower()
+    s = str(value if value is not None else "on_error").strip().lower()
     if s in ("true", "always", "1", "yes"):
         return "always"
     if s in ("false", "none", "off", "0", "no", ""):
         return "off"
-    return "on_error" if s == "on_error" else "on_error"
+    return "on_error"
 
 
 def _save_trace(ctx, engine, tag):
@@ -801,6 +805,7 @@ def run_workflow(path: str | Path | None = None, workflow: dict | None = None,
     resume        断点续跑：跳过进度文件里已完成的任务
     retry_failed  只处理失败清单里的任务
     """
+    ensure_console_logging()
     if workflow is None:
         p = Path(path or "workflow.yaml")
         if not p.is_absolute():

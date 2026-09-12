@@ -116,7 +116,7 @@ steps:
 2. 失效或站点不符则自动填账密、点登录；`manual_pause: true` 时暂停等人处理 UKey/短信
 3. 校验通过把登录态写回，并写 `.meta.json` 记录站点防跨流程误用
 4. 批量运行中被踢回登录页会自动重登后继续
-5. 换账号：删除 `state.json` 与 `state.json.meta.json`
+5. 换账号：删除 `state.json` 与 `state.meta.json`
 
 `login.reuse_settle_ms`（默认 3000）控制复用登录态时在 `success_url` 上的观察窗口，
 慢平台/后台轮询多导致跳转更晚时可调大。

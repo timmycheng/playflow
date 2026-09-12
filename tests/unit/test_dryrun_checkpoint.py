@@ -3,7 +3,7 @@
 import json
 
 from playflow import ACTIONS
-from playflow.engine import WorkflowEngine
+from playflow.engine import WorkflowEngine, _normalize_trace_mode, run_task
 from playflow.registry import action_mode
 
 
@@ -19,7 +19,8 @@ def test_read_write_classification():
                  "if", "for_each", "log", "set_var"):
         assert action_mode(name) == "read", name
     for name in ("click", "click_text", "fill", "upload", "write_file",
-                 "pick_radio", "select_option", "pause", "record"):
+                 "pick_radio", "select_option", "pause", "record",
+                 "save_state", "close_page", "close_task_page"):
         assert action_mode(name) == "write", name
 
 
@@ -85,3 +86,39 @@ def test_retry_success_clears_failed(tmp_path):
 def test_record_task_without_paths_is_noop():
     e = WorkflowEngine({"name": "t"})   # 未 set_checkpoint_paths
     e.record_task_result("t", "A", True)   # 不应抛异常
+
+
+def _once_wf():
+    return {"name": "t", "settings": {"screenshot": False},
+            "tasks": [{"name": "单页", "mode": "once",
+                       "steps": [{"uses": "log", "with": {"message": "x"}}]}]}
+
+
+def test_once_task_respects_resume_and_retry_failed():
+    wf = _once_wf()
+
+    e = WorkflowEngine(wf, resume=True)
+    e.done = {"单页": {"单页"}}
+    e.logf = lambda *a, **k: None
+    run_task(e, wf["tasks"][0])
+    assert e.summary["单页"]["跳过"] == ["单页"]
+    assert e.summary["单页"]["成功"] == []
+
+    e2 = WorkflowEngine(wf, retry_failed=True)
+    e2.retry_labels = {"单页": {"其它"}}
+    e2.logf = lambda *a, **k: None
+    run_task(e2, wf["tasks"][0])
+    assert e2.summary["单页"]["跳过"] == ["单页"]
+
+    e3 = WorkflowEngine(wf)
+    e3.logf = lambda *a, **k: None
+    run_task(e3, wf["tasks"][0])
+    assert e3.summary["单页"]["成功"] == ["单页"]
+
+
+def test_trace_mode_normalize():
+    assert _normalize_trace_mode(None) == "on_error"
+    assert _normalize_trace_mode("always") == "always"
+    assert _normalize_trace_mode(True) == "always"
+    assert _normalize_trace_mode("off") == "off"
+    assert _normalize_trace_mode("乱写") == "on_error"

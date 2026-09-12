@@ -245,10 +245,12 @@ def download(page, frames, dest_dir, prefix="", selector=None, text=None,
                 has_dl = a.get_attribute("download") is not None
             except Exception:
                 continue
-            if href.startswith(("javascript", "mailto")) or href in ("", "#"):
-                continue
-            if selector is None and not (has_dl or any(k in txt for k in keywords)):
-                continue
+            # 显式 selector 时信任用户选择的目标；自动发现时才用 href/关键词过滤
+            if selector is None:
+                if href.startswith(("javascript", "mailto")) or href in ("", "#"):
+                    continue
+                if not (has_dl or any(k in txt for k in keywords)):
+                    continue
             before_url = page.url
             try:
                 with page.expect_download(timeout=timeout) as dl_info:

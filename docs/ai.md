@@ -89,7 +89,7 @@ Python 调用：`from playflow import run_workflow; run_workflow("wf.yaml", dry_
 
 尽管代码由 AI 大规模生成，合并与发布均以自动化验收为准：
 
-- `pytest` 单元测试 63 项（模板/条件/校验/断点续跑/通知/报告等，无需浏览器）
+- `pytest` 单元测试 99 项（模板/条件/校验/断点续跑/通知/报告等，无需浏览器）
 - `tests/selftest.py` 端到端验收 62 项（自带 mock 平台，覆盖登录态、队列循环、容错匹配等真实语义）
 - `ruff` 代码检查、`python -m build` + `twine check` 构建验证、GitHub Actions 持续执行
 

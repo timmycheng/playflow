@@ -258,7 +258,7 @@ if:
 2. If invalid or from a different site, it runs the `login` shortcut: fills credentials, clicks login; with `manual_pause: true` it pauses for UKey/SMS, resumes with Enter and validates via `success_url`.
 3. On success the session is written back to `state.json` (plus a `.meta.json` site record to prevent cross-workflow misuse).
 4. If kicked back to a login page mid-run, it re-logs-in automatically and continues the current task.
-5. To switch accounts: delete `state.json` and `state.json.meta.json`.
+5. To switch accounts: delete `state.json` and `state.meta.json`.
 
 ## Checkpoint & retry
 
@@ -384,7 +384,7 @@ def my_reader(engine, params, step):
 
 | Artifact | Description |
 |---|---|
-| `state.json` + `state.json.meta.json` | login state and its site record |
+| `state.json` + `state.meta.json` | login state and its site record |
 | `<workflow>.progress.json` / `<workflow>.failed.json` | checkpoint progress / failure list (for `--resume` / `--retry-failed`) |
 | `logs/run_<date>.log` | full run log: actions, task labels, results, stack traces |
 | `shots/<n>_<stage>_<ts>.png` | screenshots of key actions (`settings.screenshot: false` to disable) |
@@ -425,7 +425,7 @@ The engine drives system Chrome via `channel`, so no `playwright install` browse
 
 ```bash
 pip install -e .[dev]
-pytest                        # 60+ unit tests, no browser needed
+pytest                        # 99 unit tests, no browser needed
 python tests/selftest.py      # 60+ e2e checks; auto-starts the mock platform, needs local Chrome
 ruff check .                  # lint
 ```

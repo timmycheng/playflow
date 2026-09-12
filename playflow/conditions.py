@@ -20,22 +20,19 @@ _FUNC_RE = re.compile(r"^([A-Za-z_]\w*)\s*\((.*)\)$", re.S)
 _NUM_RE = re.compile(r"^[-+]?(?:\d+(?:\.\d+)?|\.\d+)$")
 _IDENT_RE = re.compile(r"^[A-Za-z_]\w*(?:\.\w+)*$")
 
-_COMPARE_OPS = (
-    (" not contains ", "contains", True),
-    (" contains ", "contains", False),
-    (" not matches ", "matches", True),
-    (" matches ", "matches", False),
-    (" startswith ", "startswith", False),
-    (" endswith ", "endswith", False),
-    (" not in ", "in", True),
-    (" in ", "in", False),
-    (" >= ", ">=", False),
-    (" <= ", "<=", False),
-    (" != ", "!=", False),
-    (" == ", "==", False),
-    (" > ", ">", False),
-    (" < ", "<", False),
+_SYM_OPS = (("==", "==", False), ("!=", "!=", False), (">=", ">=", False),
+            ("<=", "<=", False), (">", ">", False), ("<", "<", False))
+_WORD_OPS = (
+    (re.compile(r"(?<![A-Za-z0-9_])not\s+contains\b"), "contains", True),
+    (re.compile(r"(?<![A-Za-z0-9_])not\s+matches\b"), "matches", True),
+    (re.compile(r"(?<![A-Za-z0-9_])not\s+in\b"), "in", True),
+    (re.compile(r"(?<![A-Za-z0-9_])contains\b"), "contains", False),
+    (re.compile(r"(?<![A-Za-z0-9_])matches\b"), "matches", False),
+    (re.compile(r"(?<![A-Za-z0-9_])startswith\b"), "startswith", False),
+    (re.compile(r"(?<![A-Za-z0-9_])endswith\b"), "endswith", False),
+    (re.compile(r"(?<![A-Za-z0-9_])in\b"), "in", False),
 )
+_MALFORMED_CHARS = "=<>!"
 
 
 def _find_top(text, token):
@@ -73,6 +70,70 @@ def _split_top(text, sep):
         rest = rest[i + len(sep):]
 
 
+def _find_cmp(text):
+    """在顶层查找比较运算符（两侧可有/无空格），返回 (起, 止, 运算符, 是否取反)。
+
+    词形运算符（contains / in / …）要求两侧不是标识符字符，避免 "login" 里的 in
+    被当成运算符；找不到时返回 None。
+    """
+    depth, quote, i, n = 0, None, 0, len(text)
+    while i < n:
+        c = text[i]
+        if quote:
+            if c == "\\" and quote == '"':
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if c in "\"'":
+            quote = c
+            i += 1
+            continue
+        if c in "([{":
+            depth += 1
+            i += 1
+            continue
+        if c in ")]}":
+            depth -= 1
+            i += 1
+            continue
+        if depth == 0:
+            for tok, op, neg in _SYM_OPS:
+                if text.startswith(tok, i):
+                    return i, i + len(tok), op, neg
+            for rx, op, neg in _WORD_OPS:
+                m = rx.match(text, i)
+                if m:
+                    return i, m.end(), op, neg
+        i += 1
+    return None
+
+
+def _has_top_level(text, chars) -> bool:
+    """顶层（引号/括号外）是否出现指定字符，用于识别写错的表达式。"""
+    depth, quote, i, n = 0, None, 0, len(text)
+    while i < n:
+        c = text[i]
+        if quote:
+            if c == "\\" and quote == '"':
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif depth == 0 and c in chars:
+            return True
+        i += 1
+    return False
+
+
 def _strip_outer(text):
     """去掉最外层成对的括号与 ${{ }} / {{ }} 包裹。"""
     s = text.strip()
@@ -103,11 +164,11 @@ def eval_condition(cond: object, engine: object) -> bool:
     if s == "":
         return False
 
-    for sep in (" or ", " || "):
+    for sep in ("||", " or "):
         parts = _split_top(s, sep)
         if len(parts) > 1:
             return any(eval_condition(part, engine) for part in parts)
-    for sep in (" and ", " && "):
+    for sep in ("&&", " and "):
         parts = _split_top(s, sep)
         if len(parts) > 1:
             return all(eval_condition(part, engine) for part in parts)
@@ -115,17 +176,24 @@ def eval_condition(cond: object, engine: object) -> bool:
         return not eval_condition(s[4:], engine)
 
     fm = _FUNC_RE.match(s)
-    if fm and fm.group(1) in _FUNC_NAMES:
-        return as_bool(_eval_func(fm.group(1), fm.group(2), engine))
+    if fm:
+        if fm.group(1) in _FUNC_NAMES:
+            return as_bool(_eval_func(fm.group(1), fm.group(2), engine))
+        raise ConfigError("无法识别的条件函数：%s（可用：%s）"
+                          % (fm.group(1), "、".join(_FUNC_NAMES)))
 
-    for token, op, neg in _COMPARE_OPS:
-        i = _find_top(s, token)
-        if i >= 0:
-            left = _resolve(s[:i], engine)
-            right = _resolve(s[i + len(token):], engine)
-            res = _compare(left, op, right)
-            return (not res) if neg else res
+    cmp = _find_cmp(s)
+    if cmp:
+        start, end, op, neg = cmp
+        left_s, right_s = s[:start].strip(), s[end:].strip()
+        if not left_s or not right_s:
+            raise ConfigError("条件表达式缺少操作数：%r" % (cond,))
+        res = _compare(_resolve(left_s, engine), op, _resolve(right_s, engine))
+        return (not res) if neg else res
 
+    if _has_top_level(s, _MALFORMED_CHARS):
+        raise ConfigError("无法解析的条件表达式：%r（请检查比较运算符与函数名，"
+                          "字符串值建议加引号）" % (cond,))
     return as_bool(_resolve(s, engine))
 
 
@@ -180,8 +248,11 @@ def _resolve(text, engine):
         except ValueError:
             return float(t)
     fm = _FUNC_RE.match(t)
-    if fm and fm.group(1) in _FUNC_NAMES and engine is not None:
-        return _eval_func(fm.group(1), fm.group(2), engine)
+    if fm:
+        if fm.group(1) in _FUNC_NAMES and engine is not None:
+            return _eval_func(fm.group(1), fm.group(2), engine)
+        if fm.group(1) not in _FUNC_NAMES:
+            raise ConfigError("无法识别的条件函数：%s" % fm.group(1))
     if VAR_RE.search(t):
         return render(t, engine.vars)
     if engine is not None and _IDENT_RE.match(t):

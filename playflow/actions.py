@@ -126,7 +126,7 @@ def _a_reload(e, p, s):
     return None
 
 
-@action("save_state", mode="read")
+@action("save_state")
 def _a_save_state(e, p, s):
     """把当前登录态持久化，默认沿用本流程的 state 文件。"""
     path = anchor(p.get("path") or e.state_path or "state.json")
@@ -644,7 +644,7 @@ def _a_switch_page(e, p, s):
     return e.current.url
 
 
-@action("close_page", mode="read")
+@action("close_page")
 def _a_close_page(e, p, s):
     which = str(p.get("which") or "current")
     if which == "others":
@@ -666,7 +666,7 @@ def _a_close_page(e, p, s):
     return len(targets)
 
 
-@action("close_task_page", mode="read")
+@action("close_task_page")
 def _a_close_task_page(e, p, s):
     for pg in list(e.opened_pages):
         try:
