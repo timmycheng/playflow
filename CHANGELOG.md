@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-12
+
+### 修复
+
+- 条件表达式不再“失败开放”：比较运算符两侧可省略空格（`count>3`、`status==200`），
+  函数名写错、单等号等无法解析的表达式会抛 `ConfigError`，而不是静默判为真。
+- `download` 显式指定 `selector` 时信任用户选择：`<button>`、`href="#"` 等
+  JS 触发下载的元素也能下载（自动发现模式仍按 href/关键词过滤）。
+- `--resume` / `--retry-failed` 对 `mode: once` 任务生效：已完成或在清单外的
+  单页任务会被跳过，不再重复执行。
+- `playflow run` 有任务失败或任务级错误时退出码为 1，便于脚本与 CI 感知结果。
+- Python API 直调 `run_workflow` 时自动挂控制台日志 handler；`disable_console_logging()`
+  后不会再被自动加回。
+- dry-run 安全边界：`save_state` / `close_page` / `close_task_page` 标注为写动作，
+  演练时不再改动登录态文件或关闭页面。
+- 录制单选框/复选框时提取关联 `label` 文本，优先生成更稳的 `pick_radio` 文字步骤。
+
+### 文档
+
+- 修正登录态元数据文件名（`state.meta.json`，不是 `state.json.meta.json`）。
+- 补回缺失的真实站点示例 `examples/deepseek_usage.yaml`（DeepSeek 用量/余额导出）。
+- 更新单元测试数量说明。
+
 ## [0.1.1] - 2026-09-11
 
 ### 新增
